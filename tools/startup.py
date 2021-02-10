@@ -1,4 +1,7 @@
+# coding: utf-8
 #!/usr/bin/python
+
+import os
 
 print
 print "checking for nltk"
@@ -45,3 +48,4 @@ except:
 # tfile.extractall(".")
 
 print "you're ready to go!"
+os.system("pause")
