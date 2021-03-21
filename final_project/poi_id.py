@@ -1,6 +1,8 @@
 # coding: utf-8
 
-#import sys
+
+
+import sys
 from time import time
 import math
 import operator
@@ -11,16 +13,21 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
-%matplotlib inline
+#%matplotlib inline
 
 
+
+def warn(*args, **kwargs):
+    pass
+import warnings
+warnings.warn = warn
 
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from sklearn.decomposition import PCA
 from sklearn.feature_selection import SelectKBest, f_classif, chi2, GenericUnivariateSelect
 from sklearn.model_selection import StratifiedShuffleSplit, GridSearchCV
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, f1_score, make_scorer
 
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
@@ -163,6 +170,7 @@ for empl in data_dict:
 
 
 #Before
+print "Before removing outliers & co."
 print "nb of poi = {}, nb of empl. = {}. Ratio = {} %".format(len(poi), len(data_dict),\
                                                             round( float( len(poi)) / len(data_dict), 4)*100 )
 
@@ -176,7 +184,7 @@ for name, values in data_dict.items():
     for _, value in values.items():
         if isnan(value): i += 1
     if (i / 21.) >= ratio_high_NaN: high_NaN[name] = i / 21.
-pp(sorted(high_NaN.items(), key=operator.itemgetter(1), reverse=True))
+# pp(sorted(high_NaN.items(), key=operator.itemgetter(1), reverse=True))
 
 #Removing outliers
 outliers = ('LOCKHART EUGENE E', 'THE TRAVEL AGENCY IN THE PARK')
@@ -204,7 +212,7 @@ series_outl = [pd_data[(pd_data>(Q3 + 1.5*IQR) ) | (pd_data<(Q1 - 1.5*IQR) )].co
 series_outl[0].name = "bad_feats"
 outl = pd.concat(series_outl, axis=1)
 outl.sort_values(by='bad_feats', ascending=False, inplace=True)
-print outl.head(8)
+# print outl.head(8)
 
 #Removing outliers
 outliers = ('LAY KENNETH L', 'TOTAL', 'FREVERT MARK A')
@@ -217,6 +225,7 @@ for k in outliers:
 poi2 = set()
 for empl in data_dict:
     if data_dict[empl]['poi'] == True:poi2.add(empl)
+print "After removing outliers & co."
 print "nb of poi = {}, nb of empl. = {}. Ratio = {} %".format(len(poi2), len(data_dict),\
                                                             round( float( len(poi2)) / len(data_dict), 4)*100 )
 
@@ -246,7 +255,7 @@ stock_sum = [
 delta_pay = pd_data[payment_sum].sum(axis=1) != pd_data['total_payments']
 delta_stock = pd_data[stock_sum].sum(axis=1) != pd_data['total_stock_value']
 
-print list(delta_pay[delta_pay==True].index), list(delta_stock[delta_stock==True].index)
+# print list(delta_pay[delta_pay==True].index), list(delta_stock[delta_stock==True].index)
 
 
 #Corrections
@@ -275,7 +284,7 @@ pd_data = pd.DataFrame.from_dict(data_dict, orient='index')
 delta_pay = pd_data[payment_sum].sum(axis=1) != pd_data['total_payments']
 delta_stock = pd_data[stock_sum].sum(axis=1) != pd_data['total_stock_value']
 
-print list(delta_pay[delta_pay==True].index), list(delta_pay[delta_stock==True].index)
+# print list(delta_pay[delta_pay==True].index), list(delta_pay[delta_stock==True].index)
 
 
 
@@ -330,12 +339,13 @@ np.set_printoptions(suppress=True,
 
 
 #Correlation Matrix with Heatmap (from https://towardsdatascience.com/)
-pd_data = pd.DataFrame(data=features)
+pd_data = pd.DataFrame.from_dict(data_dict, orient='index')
+#pd_data = pd.DataFrame(data=features)
 
 corrmat = pd_data.corr()
 top_corr_features = corrmat.index
-#plt.figure(figsize=(20,20))
-#g=sns.heatmap(pd_data[top_corr_features].corr(),annot=True,cmap="RdYlGn")
+# plt.figure(figsize=(20,20))
+# g=sns.heatmap(pd_data[top_corr_features].corr(),annot=True,cmap="RdYlGn")
 
 
 
@@ -345,10 +355,11 @@ top_corr_features = corrmat.index
 ###Splitting
 ###Replacing train_test_split by StratifiedShuffleSplit
 ###To have stratified & shuffled split 
-sss = StratifiedShuffleSplit(1000,\
-                             test_size= 0.5,\
-                             random_state = 42,\
-                            )
+sss = StratifiedShuffleSplit(
+    n_splits = 10,\
+    #test_size = 0.5,\
+    random_state = 42,\
+)
 
 for train_index, test_index in sss.split(features, labels): 
     features_train = list()
@@ -395,99 +406,89 @@ search_space = [
     
     
     #KNC
-#     {'reduce_dim': [PCA()],
-#      'reduce_dim__n_components': [2, 5, 8, 9, 10, 15, 18],
+    # Best 90/10
+    {'reduce_dim': [PCA()],
+     'reduce_dim__n_components': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
      
-#      'classifier': [KNeighborsClassifier()],
-#      'classifier__n_neighbors': [3, 6, 10, 14],
-#      'classifier__weights': ['uniform', 'distance']},
+     'classifier': [KNeighborsClassifier()],
+     'classifier__n_neighbors': [2, 3, 4, 5, 6],
+     'classifier__weights': ['uniform', 'distance']},
     
 #     {'reduce_dim': [SelectKBest(f_classif)],
-#      'reduce_dim__k': [2, 5, 9, 10, 11, 15, 19],
+#      'reduce_dim__k': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
      
 #      'classifier': [KNeighborsClassifier()],
-#      'classifier__n_neighbors': [3, 6, 10, 14],
+#      'classifier__n_neighbors': [2, 3, 4, 5, 6],
 #      'classifier__weights': ['uniform', 'distance']},
     
     
     #AdaBoost
 #     {'reduce_dim': [PCA()],
-#      'reduce_dim__n_components': [2, 5, 8, 9, 10, 15, 18],
+#      'reduce_dim__n_components': [13, 14, 15],
      
 #      'classifier': [AdaBoostClassifier()],
-#      'classifier__n_estimators': [50, 75, 100, 125],
-#      'classifier__learning_rate': [0.25, 0.5, 1, 2, 4]},
+#      'classifier__n_estimators': [10, 50, 100],
+#      'classifier__learning_rate': [0.1, 0.5, 1.0],
+#      'classifier__random_state' : [42]},
     
 #     {'reduce_dim': [SelectKBest(f_classif)],
-#      'reduce_dim__k': [2, 5, 9, 10, 11, 15, 19, 20],
+#      'reduce_dim__k': [14, 15, 16],
      
 #      'classifier': [AdaBoostClassifier()],
-#      'classifier__n_estimators': [50, 75, 100, 125],
-#      'classifier__learning_rate': [0.25, 0.5, 1, 2, 4]},
+#      'classifier__n_estimators': [10, 50, 100],
+#      'classifier__learning_rate': [0.1, 0.5, 1.0],
+#      'classifier__random_state' : [42]},
     
     
     #SVC
-    {'reduce_dim': [PCA()],
-     'reduce_dim__n_components': [2, 5, 8, 9, 10, 15, 18],
+     # Best 50/50
+#      {'reduce_dim': [PCA()],
+#       'reduce_dim__n_components': [8, 9, 10],
      
-     'classifier': [SVC()],
-     'classifier__C': [10, 100, 1000],
-     'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
-     'classifier__class_weight' :[None, 'balanced']},
+#      'classifier': [SVC()],
+#      'classifier__C': [0.1, 1, 10, 100, 1000, 10000],
+#      'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
+#      'classifier__class_weight' :[None, 'balanced']},
     
-    {'reduce_dim': [SelectKBest(f_classif)],
-     'reduce_dim__k': [2, 5, 9, 10, 11, 15, 19],
+#      {'reduce_dim': [SelectKBest(f_classif)],
+#       'reduce_dim__k': [12, 13, 14],
      
-     'classifier': [SVC()],
-     'classifier__C': [10, 100, 1000],
-     'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
-     'classifier__class_weight' :[None, 'balanced']},
+#      'classifier': [SVC()],
+#      'classifier__C': [0.1, 1, 10 ,100 ,1000, 10000],
+#      'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
+#      'classifier__class_weight' :[None, 'balanced']},
     
     
-#     #Decision Tree
+     #Decision Tree
 #     {'reduce_dim': [PCA()],
-#      'reduce_dim__n_components': [2, 5, 10, 15, 20],
+#      'reduce_dim__n_components': [15, 16, 17],
      
 #      'classifier': [DecisionTreeClassifier()],
 #      'classifier__criterion': ['gini', 'entropy'],
 #      'classifier__splitter': ['best', 'random'],
-#      'classifier__max_depth': [None, 5, 10, 15],
+#      #'classifier__max_depth': [None, 5, 10, 15],
 #      'classifier__min_samples_split': [2, 5, 10, 15, 20],
 #      'classifier__max_features': [None, 'sqrt', 'log2', 'auto'],
-#      'classifier__max_leaf_nodes' : [None, 25, 50, 100, 1000]},
+#      'classifier__max_leaf_nodes' : [None, 25, 50, 100, 1000],
+#      'classifier__random_state' : [42]},
     
 #     {'reduce_dim': [SelectKBest(f_classif)],
-#      'reduce_dim__k': [2, 5, 10, 15, 19, 20],
+#      'reduce_dim__k': [11, 12, 13],
      
 #      'classifier': [DecisionTreeClassifier()],
 #      'classifier__criterion': ['gini', 'entropy'],
 #      'classifier__splitter': ['best', 'random'],
-#      'classifier__max_depth': [None, 5, 10, 15],
+#      #'classifier__max_depth': [None, 5, 10, 15],
 #      'classifier__min_samples_split': [2, 5, 10, 15, 20],
 #      'classifier__max_features': [None, 'sqrt', 'log2', 'auto'],
-#      'classifier__max_leaf_nodes' : [None, 25, 50, 100, 1000]},
-    
-    
-    #Random Forest
-#     {'reduce_dim': [PCA()],
-#      'reduce_dim__n_components': [2, 4, 5, 6, 10, 18],
-     
-#      'classifier': [RandomForestClassifier()],
-#      'classifier__n_estimators': [10, 100, 1000],
-#      'classifier__criterion': ['gini', 'entropy']},
-    
-#     {'reduce_dim': [SelectKBest(f_classif)],
-#      'reduce_dim__k': [2, 5, 9, 10, 11, 15, 19],
-     
-#      'classifier': [RandomForestClassifier()],
-#      'classifier__n_estimators': [10, 100, 1000],
-#      'classifier__criterion': ['gini', 'entropy']},
+#      'classifier__max_leaf_nodes' : [None, 25, 50, 100, 1000],
+#      'classifier__random_state' : [42]},
     
 ]
 
 
 
-clf = GridSearchCV(pipe, search_space, scoring='f1')
+clf = GridSearchCV(pipe, search_space, scoring='f1_macro')
 clf = clf.fit(features_train, labels_train)
 predictions = clf.predict(features_test)
 
@@ -510,10 +511,11 @@ t1 = time()
 ### http://scikit-learn.org/stable/modules/generated/sklearn.cross_validation.StratifiedShuffleSplit.html
 
 print ""
-print (clf.best_estimator_)
+pp (clf.best_params_)
 print ""
-#print (clf.best_score_)
-#print classification_report(labels_test, predictions)
+print ('F1 macro =', clf.best_score_)
+
+
 
 
 true_negatives = 0
@@ -542,14 +544,15 @@ False negatives: {:4d}\tTrue negatives: {:4d}"
 PERF_FORMAT_STRING = "\nAccuracy: {:>0.{display_precision}f}\tPrecision: {:>0.{display_precision}f}\t\
 Recall: {:>0.{display_precision}f}\nF1: {:>0.{display_precision}f}\tF2: {:>0.{display_precision}f}"
 
+total_predictions = true_negatives + false_negatives + false_positives + true_positives
+print RESULTS_FORMAT_STRING.format(total_predictions, true_positives, false_positives, false_negatives, true_negatives)
+
 try:
-    total_predictions = true_negatives + false_negatives + false_positives + true_positives
     accuracy = 1.0*(true_positives + true_negatives)/total_predictions
     precision = 1.0*true_positives/(true_positives+false_positives)
     recall = 1.0*true_positives/(true_positives+false_negatives)
     f1 = 2.0 * true_positives/(2*true_positives + false_positives+false_negatives)
     f2 = (1+2.0*2.0) * precision*recall/(4*precision + recall)
-    print RESULTS_FORMAT_STRING.format(total_predictions, true_positives, false_positives, false_negatives, true_negatives)
     print PERF_FORMAT_STRING.format(accuracy, precision, recall, f1, f2, display_precision = 5)
     print ""
 except:
@@ -569,8 +572,8 @@ except:
 ### that the version of poi_id.py that you submit can be run on its own and
 ### generates the necessary .pkl files for validating your results.
 
-dump_classifier_and_data(clf, my_dataset, features_list)
+dump_classifier_and_data(clf.best_estimator_, my_dataset, features_list)
 print "time:", round(t1-t0, 3), "s"
-print "done"
+print ""
 
-input("Appuyez sur la touche ENTREE pour continuer...")
+input("Done")
